@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gender Classifier</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .upload-container {
+            border: 2px dashed #ccc;
+            padding: 25px;
+            text-align: center;
+            margin: 20px 0;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #file-info {
+            margin: 10px 0;
+            font-style: italic;
+        }
+        #preview-container {
+            position: relative;
+            margin: 20px 0;
+        }
+        #preview {
+            max-width: 100%;
+        }
+        .face-box {
+            position: absolute;
+            border: 2px solid;
+            border-radius: 3px;
+        }
+        .male-box {
+            border-color: blue;
+        }
+        .female-box {
+            border-color: pink;
+        }
+        .prediction-label {
+            position: absolute;
+            color: white;
+            font-weight: bold;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .male-label {
+            background-color: blue;
+        }
+        .female-label {
+            background-color: pink;
+        }
+        #predict-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        #predict-btn:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        #results {
+            margin-top: 20px;
+        }
+        .result-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            background: #f5f5f5;
+        }
+        .low-confidence {
+            background: #fff3cd;
+        }
+    </style>
+</head>
+<body>
+    <h1>Gender Classification</h1>
+    
+    <div class="upload-container" id="upload-container">
+        <div>Click to select an image</div>
+        <div id="file-info">No file selected</div>
+        <input type="file" id="file-input" accept="image/*" style="display:none;">
+    </div>
+    
+    <button id="predict-btn" disabled>Predict Gender</button>
+    
+    <div id="preview-container" style="display:none;">
+        <img id="preview">
+    </div>
+    
+    <div id="results"></div>
+
+    <script>
+        // DOM elements
+        const fileInput = document.getElementById('file-input');
+        const uploadContainer = document.getElementById('upload-container');
+        const fileInfo = document.getElementById('file-info');
+        const previewContainer = document.getElementById('preview-container');
+        const previewImg = document.getElementById('preview');
+        const predictBtn = document.getElementById('predict-btn');
+        const resultsDiv = document.getElementById('results');
+        
+        // Current selected file
+        let currentFile = null;
+        
+        // File selection handler
+        fileInput.addEventListener('change', function(e) {
+            if (this.files && this.files[0]) {
+                currentFile = this.files[0];
+                fileInfo.textContent = currentFile.name;
+                predictBtn.disabled = false;
+                
+                // Show preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    previewImg.src = e.target.result;
+                    previewContainer.style.display = 'block';
+                    // Clear previous results
+                    resultsDiv.innerHTML = '';
+                    // Clear previous face boxes
+                    document.querySelectorAll('.face-box, .prediction-label').forEach(el => el.remove());
+                };
+                reader.readAsDataURL(currentFile);
+            } else {
+                currentFile = null;
+                fileInfo.textContent = 'No file selected';
+                predictBtn.disabled = true;
+                previewContainer.style.display = 'none';
+            }
+        });
+        
+        // Predict button handler
+        predictBtn.addEventListener('click', async function() {
+            if (!currentFile) return;
+            
+            predictBtn.disabled = true;
+            resultsDiv.innerHTML = '<p>Processing image...</p>';
+            
+            const formData = new FormData();
+            formData.append('file', currentFile);
+            
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Prediction failed');
+                }
+                
+                displayResults(data);
+            } catch (error) {
+                resultsDiv.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            } finally {
+                predictBtn.disabled = false;
+            }
+        });
+        
+        // Display results with face boxes
+        function displayResults(data) {
+            resultsDiv.innerHTML = '';
+            
+            if (!data.predictions || data.predictions.length === 0) {
+                resultsDiv.innerHTML = '<p>No faces detected</p>';
+                return;
+            }
+            
+            // Create face boxes on preview image
+            data.predictions.forEach((pred, idx) => {
+                const [x, y, w, h] = pred.coords;
+                const genderClass = pred.gender.toLowerCase();
+                const confidence = (pred.confidence * 100).toFixed(1);
+                
+                // Create face bounding box
+                const box = document.createElement('div');
+                box.className = `face-box ${genderClass}-box`;
+                box.style.left = `${x}px`;
+                box.style.top = `${y}px`;
+                box.style.width = `${w}px`;
+                box.style.height = `${h}px`;
+                previewContainer.appendChild(box);
+                
+                // Create prediction label
+                const label = document.createElement('div');
+                label.className = `prediction-label ${genderClass}-label`;
+                label.textContent = `${pred.gender} (${confidence}%)`;
+                label.style.left = `${x}px`;
+                label.style.top = `${y - 20}px`;
+                previewContainer.appendChild(label);
+                
+                // Create result item
+                const resultItem = document.createElement('div');
+                resultItem.className = `result-item ${pred.confidence < 0.7 ? 'low-confidence' : ''}`;
+                resultItem.innerHTML = `
+                    <h3>Face ${idx + 1}</h3>
+                    <p><strong>Gender:</strong> ${pred.gender}</p>
+                    <p><strong>Confidence:</strong> ${confidence}%</p>
+                    ${pred.confidence < 0.7 ? 
+                      '<p class="warning">⚠️ Low confidence prediction</p>' : ''}
+                `;
+                resultsDiv.appendChild(resultItem);
+            });
+        }
+        
+        // Click on upload container to trigger file input
+        uploadContainer.addEventListener('click', function() {
+            fileInput.click();
+        });
+    </script>
+</body>
+</html>
