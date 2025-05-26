@@ -6,7 +6,7 @@ A high-accuracy gender classification system using a custom CNN trained on the U
 ##  Features
 - **High Accuracy**: 93.4% test accuracy on UTKFace dataset.
 - **Lightweight CNN**: Only 1.2M parameters (vs ResNet50's 23.5M).
-- ** Deployment**: Flask web app for easy predictions.
+- Deployment: Flask web app for easy predictions.
 - **Data Augmentation**: Robust to lighting/pose variations.
 
 ## Installation
@@ -58,7 +58,6 @@ A 6-layer CNN with:
 
 
 - **Dataset**: [UTKFace](https://susanqq.github.io/UTKFace/)
-```
 
 
 
