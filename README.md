@@ -9,22 +9,11 @@ A high-accuracy gender classification system using a custom CNN trained on the U
 - Deployment: Flask web app for easy predictions.
 - **Data Augmentation**: Robust to lighting/pose variations.
 
-## Installation
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/AashrithaSura/Gender_Classification_Project.git
-   cd Gender_Classification_Project
-   ```
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Download the pretrained model:  
+### Download the pretrained model:  
    [Google Drive Link](https://drive.google.com/file/d/17_TqsZtZ7AJ84DUCxnp14Tz0rHt4JVSx/view?usp=sharing)
 
 ---
 
-##  Usage
 ### Run the Flask App
 ```bash
 python src/app.py
